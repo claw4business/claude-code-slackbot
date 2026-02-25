@@ -29,9 +29,17 @@ from datetime import datetime
 
 # ---------- Config ----------
 
-BIZ_SIM_ENV = Path.home() / "biz-simulator" / ".env"
-SLACK_CHANNEL_ID = "C0AGW5W7Z7X"  # #claude
-BOT_USER_ID = "U0AHC57UW6M"       # biz_simulator bot
+# Path to .env file containing SLACK_BOT_TOKEN (and optionally SLACK_APP_TOKEN)
+# Update this to point to YOUR .env file
+ENV_FILE = Path(__file__).resolve().parent / ".env"
+
+# Slack channel ID where the bot listens for /claude commands
+# Get this from: channel details → scroll to bottom → copy ID (starts with C)
+SLACK_CHANNEL_ID = "C0AGW5W7Z7X"  # UPDATE THIS to your channel
+
+# Bot user ID — find this in your Slack app settings under "Basic Information"
+BOT_USER_ID = "U0AHC57UW6M"       # UPDATE THIS to your bot's user ID
+
 POLL_INTERVAL = 5                   # seconds between checks
 STATE_FILE = Path("/tmp/claude-launcher-state.json")
 LOG_DIR = Path.home() / "claude-sessions"
@@ -40,9 +48,9 @@ CLAUDE_BIN = Path.home() / ".local" / "bin" / "claude"
 # ---------- Helpers ----------
 
 def load_env():
-    """Load env vars from biz-simulator .env."""
-    if BIZ_SIM_ENV.exists():
-        for line in BIZ_SIM_ENV.read_text().splitlines():
+    """Load env vars from .env file."""
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
             line = line.strip()
             if line and not line.startswith('#') and '=' in line:
                 key, _, value = line.partition('=')
@@ -52,12 +60,16 @@ def load_env():
 def get_slack_client():
     """Create a Slack WebClient."""
     load_env()
-    venv_pkgs = Path.home() / "biz-simulator" / "venv" / "lib"
-    for p in venv_pkgs.glob("python*/site-packages"):
-        if str(p) not in sys.path:
-            sys.path.insert(0, str(p))
+    # Add venv site-packages to path (look for venv next to this script, or fallback)
+    script_dir = Path(__file__).resolve().parent
+    for venv_root in [script_dir / "venv", Path.home() / "biz-simulator" / "venv"]:
+        venv_pkgs = venv_root / "lib"
+        for p in venv_pkgs.glob("python*/site-packages"):
+            if str(p) not in sys.path:
+                sys.path.insert(0, str(p))
     from slack_sdk import WebClient
-    return WebClient(token=os.environ.get("SIMULATOR_SLACK_TOKEN", ""))
+    token = os.environ.get("SLACK_BOT_TOKEN") or os.environ.get("SIMULATOR_SLACK_TOKEN", "")
+    return WebClient(token=token)
 
 
 def log(msg):

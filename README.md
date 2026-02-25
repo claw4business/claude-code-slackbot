@@ -59,11 +59,10 @@ git clone https://github.com/claw4business/claude-code-slackbot.git
 cd claude-code-slackbot
 ```
 
-Create a `.env` file with your Slack credentials:
+Create a `.env` file in the repo directory with your Slack credentials:
 
 ```bash
-SLACK_BOT_TOKEN=xoxb-your-token-here
-SLACK_APP_TOKEN=xapp-your-app-token-here   # only needed for launcher
+SLACK_BOT_TOKEN=xoxb-your-bot-token-here
 ```
 
 Set up a Python virtual environment with dependencies:
@@ -154,56 +153,104 @@ Whichever arrives first wins. The other path is automatically cleaned up.
 
 ---
 
-## Slack Launcher (Optional)
+## Slack Launcher
 
-The launcher lets you start Claude Code sessions from Slack:
+Launch Claude Code sessions remotely from Slack — no terminal required:
 
 ```
 @YourBotName /claude Fix the login bug in auth.py
 ```
 
-Each task gets its own tmux session. To set it up:
+What happens:
+1. The launcher picks up your message in the Slack channel
+2. Spins up a new **tmux session** running Claude Code with your task
+3. Posts an acknowledgement to the Slack thread with session details
+4. Claude works autonomously — if it has questions, the **escalator hook** posts them back to Slack
+5. You answer questions by replying to threads on your phone
+6. When Claude finishes, a completion summary is posted to the thread
 
-### Systemd Service
+This means you can kick off coding tasks from your couch and monitor progress entirely from Slack.
+
+### Launcher Config
+
+Edit the config constants at the top of `launcher.py`:
+
+```python
+# Your Slack channel ID
+SLACK_CHANNEL_ID = "C0YOUR_CHANNEL_ID"
+
+# Your bot's user ID (find in Slack app settings → Basic Information)
+BOT_USER_ID = "U0YOUR_BOT_ID"
+```
+
+### Systemd Service Setup
+
+The launcher runs as a background service that polls Slack for `/claude` commands.
 
 Create `~/.config/systemd/user/slack-launcher.service`:
 
 ```ini
 [Unit]
-Description=Slack Claude Launcher
+Description=Slack-to-Claude Code Launcher
 After=network-online.target
 
 [Service]
+Type=simple
 ExecStart=/path/to/your/venv/bin/python3 /path/to/claude-code-slackbot/launcher.py
 Restart=always
-RestartSec=5
+RestartSec=10
 Environment=HOME=%h
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+WorkingDirectory=%h
 
 [Install]
 WantedBy=default.target
 ```
 
-Then enable and start:
+Enable and start:
 
 ```bash
 systemctl --user daemon-reload
 systemctl --user enable --now slack-launcher.service
 ```
 
-Check status:
+Manage:
 
 ```bash
-systemctl --user status slack-launcher
-journalctl --user -u slack-launcher -f
+systemctl --user status slack-launcher    # check status
+systemctl --user restart slack-launcher   # restart after config changes
+journalctl --user -u slack-launcher -f    # watch logs live
 ```
 
-### Slack App: Enable Socket Mode
+### Finding Your Bot User ID
 
-For the launcher, your Slack app needs Socket Mode:
+You need the bot's Slack user ID (starts with `U`) for the launcher config:
 
-1. Go to your app settings → **Socket Mode** → Enable
-2. Generate an **App-Level Token** with `connections:write` scope
-3. Add this token to your `.env` as `SLACK_APP_TOKEN`
+1. In Slack, go to your bot's profile (click its name in any message)
+2. Click the **...** menu → **Copy member ID**
+3. Or check your app settings at [api.slack.com/apps](https://api.slack.com/apps) → **Basic Information**
+
+### Attaching to Sessions
+
+Each launched task runs in its own tmux session. You can attach from any terminal:
+
+```bash
+tmux list-sessions              # see all running sessions
+tmux attach -t claude-fix-bug-a1b2   # attach to a specific session
+```
+
+Session logs are saved to `~/claude-sessions/`.
+
+### How Escalator + Launcher Work Together
+
+When the launcher starts a Claude session with `--dangerously-skip-permissions`, the escalator hook is still active. So when Claude needs to ask a question during a launched task:
+
+1. Claude calls `AskUserQuestion`
+2. The escalator hook posts the question to Slack
+3. You reply to the thread on Slack
+4. Claude gets the answer and continues working
+
+This creates a fully remote workflow — launch from Slack, answer questions on Slack, get results on Slack.
 
 ---
 

@@ -95,7 +95,8 @@ def get_slack_client():
         if p_str not in sys.path:
             sys.path.insert(0, p_str)
     from slack_sdk import WebClient
-    return WebClient(token=os.environ.get("SIMULATOR_SLACK_TOKEN", ""))
+    token = os.environ.get("SLACK_BOT_TOKEN") or os.environ.get("SIMULATOR_SLACK_TOKEN", "")
+    return WebClient(token=token)
 
 
 def safe_json_load(path: Path, default: dict) -> dict:
