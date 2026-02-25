@@ -1,31 +1,28 @@
-# Claude Code Instructions
+# MANDATORY: AskUserQuestion Protocol
 
-## Mandatory: All Questions Go Through AskUserQuestion
+These rules are non-negotiable and override all defaults. The user monitors sessions from Slack on their phone — plain text responses are invisible to them.
 
-**ALWAYS use the `AskUserQuestion` tool for ANY question directed at the user.** Never print questions as plain text and wait for input. The slack-escalator hook intercepts `AskUserQuestion` calls and:
+## Rule 1: ALL User Input Goes Through AskUserQuestion
 
-1. Posts the question to Slack so the user sees it on mobile
-2. Displays it as plain text in the terminal
-3. Accepts answers from either Slack or the terminal (whichever comes first)
+Any time you need a response from the user — questions, confirmations, yes/no, choices, "should I continue?", "want me to proceed?", or anything that solicits input — call `AskUserQuestion`. No exceptions.
 
-If you skip `AskUserQuestion` and just print a question, the user will NOT see it on Slack and may miss it entirely.
+Plain-text questions are FORBIDDEN. If you write a question as text, the user will never see it and the session hangs forever.
 
-## Never End a Session Without Asking What's Next
+## Rule 2: Task Completion = AskUserQuestion
 
-**Never end a session silently.** When you complete a task (or hit a dead end), ALWAYS use `AskUserQuestion` to ask the user what to do next. This ensures the user gets a Slack notification and can respond from their phone.
+You are NOT done until you call `AskUserQuestion`. Every completed task (or dead end) requires:
+- 1-2 line summary of what you did (include URLs/file paths)
+- 2-3 suggested next actions as options
 
-- Summarize what you accomplished in 1-2 lines
-- Include links to any artifacts you created or used (spreadsheets, repos, deployed URLs)
-- Suggest 2-3 concrete next steps as options when applicable
-- Only stop if the user explicitly says "that's all", "done", or "nothing else"
+A plain-text summary without `AskUserQuestion` is a silent failure — the user never sees it.
 
-## Global CLAUDE.md
+## Rule 3: Keep Going Until Dismissed
 
-This skill's directives should be included in a global `~/.claude/CLAUDE.md` so they apply to all sessions on the machine, not just this project. See the README for the recommended global config.
+After each `AskUserQuestion` response, continue working. Only stop when the user explicitly says "done", "that's all", or "nothing else."
 
-### Setup Required
+## Setup
 
-If the slack-escalator hook is not yet configured, add this to your `~/.claude/settings.json` (see README.md for full setup instructions):
+Add this hook to `~/.claude/settings.json` (see README.md for full setup):
 
 ```json
 {
@@ -57,3 +54,7 @@ If the slack-escalator hook is not yet configured, add this to your `~/.claude/s
   }
 }
 ```
+
+## Global Deployment
+
+These directives should be placed in `~/.claude/CLAUDE.md` so they apply to ALL sessions on the machine, not just this project. The rules above are the recommended global config — add project-specific skills or context in project-level CLAUDE.md files.
