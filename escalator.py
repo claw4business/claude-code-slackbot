@@ -38,10 +38,11 @@ from typing import Any
 # Path to .env file containing SLACK_BOT_TOKEN — update to YOUR .env location
 ENV_FILE = Path(__file__).resolve().parent / ".env"
 VENV_LIB_ROOT = Path(__file__).resolve().parent / "venv" / "lib"
-VENV_PYTHON = str(Path(__file__).resolve().parent / "venv" / "bin" / "python3")
+# Use the current interpreter (matches however the hook was invoked)
+VENV_PYTHON = sys.executable
 TMP_DIR = Path("/tmp")
 
-SLACK_CHANNEL_ID = "YOUR_CHANNEL_ID"  # UPDATE THIS — your Slack channel ID (starts with C)
+_SLACK_CHANNEL_ID_DEFAULT = "YOUR_CHANNEL_ID"
 SCRIPT_PATH = str(Path(__file__).resolve())
 
 WATCH_INTERVAL = 5       # background watcher polls every 5 seconds
@@ -87,6 +88,11 @@ def load_env() -> None:
             continue
         key, _, value = line.partition("=")
         os.environ.setdefault(key.strip(), value.strip())
+
+
+def get_channel_id() -> str:
+    load_env()
+    return os.environ.get("SLACK_CHANNEL_ID", _SLACK_CHANNEL_ID_DEFAULT)
 
 
 def get_slack_client():
@@ -181,14 +187,14 @@ def post_to_slack(sid: str, questions: list[dict]) -> tuple[str | None, float | 
         return None, None
 
     try:
-        client.conversations_join(channel=SLACK_CHANNEL_ID)
+        client.conversations_join(channel=get_channel_id())
     except Exception:
         pass
 
     text = format_slack_message(questions, sid)
     try:
         resp = client.chat_postMessage(
-            channel=SLACK_CHANNEL_ID, text=text,
+            channel=get_channel_id(), text=text,
             unfurl_links=False, unfurl_media=False,
         )
         thread_ts = resp.get("ts")
@@ -219,7 +225,7 @@ def check_slack_reply_once(sid: str) -> str:
     try:
         client = get_slack_client()
         resp = client.conversations_replies(
-            channel=SLACK_CHANNEL_ID, ts=thread_ts, limit=100,
+            channel=get_channel_id(), ts=thread_ts, limit=100,
         )
     except Exception as e:
         log(f"check-slack-reply error: {e}", sid)
@@ -255,7 +261,7 @@ def check_slack_reply_once(sid: str) -> str:
     try:
         client = get_slack_client()
         client.chat_postMessage(
-            channel=SLACK_CHANNEL_ID,
+            channel=get_channel_id(),
             text=f":white_check_mark: Got it! Answering with: *{normalized}*",
             thread_ts=thread_ts,
             unfurl_links=False, unfurl_media=False,
@@ -367,7 +373,7 @@ def pre_hook() -> None:
         "thread_ts": thread_ts,
         "baseline_ts": baseline_ts,
         "last_seen_ts": baseline_ts,
-        "channel_id": SLACK_CHANNEL_ID,
+        "channel_id": get_channel_id(),
         "questions": questions,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
