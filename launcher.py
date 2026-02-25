@@ -6,8 +6,8 @@ Polls Slack #claude for messages that @mention the bot with /claude command.
 When found, spins up a new tmux session running Claude Code with the user's task.
 
 Usage in Slack:
-  @biz_simulator /claude Fix the login bug in auth.py
-  @biz_simulator /claude Add dark mode to the dashboard
+  @YourBot /claude Fix the login bug in auth.py
+  @YourBot /claude Add dark mode to the dashboard
 
 Each task gets its own tmux session. User can:
   - Answer questions via Slack (slack-escalator hook handles this)
@@ -35,10 +35,10 @@ ENV_FILE = Path(__file__).resolve().parent / ".env"
 
 # Slack channel ID where the bot listens for /claude commands
 # Get this from: channel details → scroll to bottom → copy ID (starts with C)
-SLACK_CHANNEL_ID = "C0AGW5W7Z7X"  # UPDATE THIS to your channel
+SLACK_CHANNEL_ID = "YOUR_CHANNEL_ID"  # UPDATE THIS — your Slack channel ID (starts with C)
 
 # Bot user ID — find this in your Slack app settings under "Basic Information"
-BOT_USER_ID = "U0AHC57UW6M"       # UPDATE THIS to your bot's user ID
+BOT_USER_ID = "YOUR_BOT_USER_ID"   # UPDATE THIS — your bot's user ID (starts with U)
 
 POLL_INTERVAL = 5                   # seconds between checks
 STATE_FILE = Path("/tmp/claude-launcher-state.json")
@@ -62,7 +62,7 @@ def get_slack_client():
     load_env()
     # Add venv site-packages to path (look for venv next to this script, or fallback)
     script_dir = Path(__file__).resolve().parent
-    for venv_root in [script_dir / "venv", Path.home() / "biz-simulator" / "venv"]:
+    for venv_root in [script_dir / "venv"]:
         venv_pkgs = venv_root / "lib"
         for p in venv_pkgs.glob("python*/site-packages"):
             if str(p) not in sys.path:
@@ -105,7 +105,7 @@ def make_session_name(task_text):
 def parse_command(text):
     """Parse a Slack message for /claude command.
 
-    Expected format: <@U0AHC57UW6M> /claude <task description>
+    Expected format: <@BOT_USER_ID> /claude <task description>
     Returns task text or None.
     """
     # Remove the bot mention
@@ -240,7 +240,7 @@ def main():
         save_state(state)
 
     log(f"Polling #{SLACK_CHANNEL_ID} every {POLL_INTERVAL}s for /claude commands...")
-    log(f"Trigger: @biz_simulator /claude <task>")
+    log(f"Trigger: @bot /claude <task>")
 
     while True:
         try:

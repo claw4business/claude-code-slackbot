@@ -35,12 +35,13 @@ from typing import Any
 
 # ---------- Config ----------
 
-BIZ_SIM_ENV = Path.home() / "biz-simulator" / ".env"
-VENV_LIB_ROOT = Path.home() / "biz-simulator" / "venv" / "lib"
-VENV_PYTHON = str(Path.home() / "biz-simulator" / "venv" / "bin" / "python3")
+# Path to .env file containing SLACK_BOT_TOKEN — update to YOUR .env location
+ENV_FILE = Path(__file__).resolve().parent / ".env"
+VENV_LIB_ROOT = Path(__file__).resolve().parent / "venv" / "lib"
+VENV_PYTHON = str(Path(__file__).resolve().parent / "venv" / "bin" / "python3")
 TMP_DIR = Path("/tmp")
 
-SLACK_CHANNEL_ID = "C0AGW5W7Z7X"  # #claude
+SLACK_CHANNEL_ID = "YOUR_CHANNEL_ID"  # UPDATE THIS — your Slack channel ID (starts with C)
 SCRIPT_PATH = str(Path(__file__).resolve())
 
 WATCH_INTERVAL = 5       # background watcher polls every 5 seconds
@@ -78,9 +79,9 @@ def log(msg: str, sid: str | None = None) -> None:
 
 
 def load_env() -> None:
-    if not BIZ_SIM_ENV.exists():
+    if not ENV_FILE.exists():
         return
-    for raw_line in BIZ_SIM_ENV.read_text(encoding="utf-8").splitlines():
+    for raw_line in ENV_FILE.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
